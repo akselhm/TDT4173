@@ -1,7 +1,9 @@
 import pandas as pd 
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import BaggingClassifier, RandomForestClassifier, AdaBoostClassifier
+from sklearn.ensemble import BaggingClassifier, RandomForestClassifier, AdaBoostClassifier, VotingClassifier
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
 from sklearn.metrics import confusion_matrix
 
 #read dataset
@@ -18,14 +20,14 @@ Y = array[:,-1]
 
 x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=10)
 
-#function to calculate sencitivity and specificity
-def sencitivityAndSpecificity(y_true, y_pred):
+#function to calculate sensitivity and specificity
+def sensitivityAndSpecificity(y_true, y_pred):
     tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
-    sencitivity = tp / (tp+fn)
+    sensitivity = tp / (tp+fn)
     specificity = tn / (tn+fp)
-    return sencitivity, specificity
+    return sensitivity, specificity
 
-# Decition Tree (To see difference) -----------------------------------------
+# ------------------------- Decition Tree (To see difference) -----------------------------------------
 
 dTree = DecisionTreeClassifier()
 
@@ -36,17 +38,17 @@ dTree.fit(x_train,y_train)
 
 print("-- DECISION TREE --")
 
-sencitivity, specificity = sencitivityAndSpecificity(y_train, dTree.predict(x_train))
-print("sencitivity on training data: ", sencitivity)
+sensitivity, specificity = sensitivityAndSpecificity(y_train, dTree.predict(x_train))
+print("sensitivity on training data: ", sensitivity)
 print("specificity on training data: ", specificity)
 
-sencitivity, specificity = sencitivityAndSpecificity(y_test, dTree.predict(x_test))
-print("sencitivity on test data: ", sencitivity)
+sensitivity, specificity = sensitivityAndSpecificity(y_test, dTree.predict(x_test))
+print("sensitivity on test data: ", sensitivity)
 print("specificity on test data: ", specificity)
 print("\n")
 
 
-#Random Forest Classifier (Bagging) -------------------------------------------
+#---------------------------- Random Forest Classifier (Bagging) -------------------------------------------
 
 RandomForest = RandomForestClassifier(n_estimators = 30)
 RandomForest.fit(x_train,y_train)
@@ -56,17 +58,17 @@ RandomForest.fit(x_train,y_train)
 
 print("-- RANDOM FOREST --")
 
-sencitivity, specificity = sencitivityAndSpecificity(y_train, RandomForest.predict(x_train))
-print("sencitivity on training data: ", sencitivity)
+sensitivity, specificity = sensitivityAndSpecificity(y_train, RandomForest.predict(x_train))
+print("sensitivity on training data: ", sensitivity)
 print("specificity on training data: ", specificity)
 
-sencitivity, specificity = sencitivityAndSpecificity(y_test, RandomForest.predict(x_test))
-print("sencitivity on training data: ", sencitivity)
-print("specificity on training data: ", specificity)
+sensitivity, specificity = sensitivityAndSpecificity(y_test, RandomForest.predict(x_test))
+print("sensitivity on test data: ", sensitivity)
+print("specificity on test data: ", specificity)
 print("\n")
 
 
-#Bagging (w/ decision trees) -------------------------------------------------
+#------------------------- Bagging (w/ decision trees) -------------------------------------------------
 
 Bagging = BaggingClassifier(DecisionTreeClassifier(), max_samples= 0.5, max_features = 1.0, n_estimators = 30)
 #NOTE: bad results. needs tuning
@@ -77,14 +79,37 @@ Bagging.fit(x_train,y_train)
 
 print("-- BAGGING --")
 
-sencitivity, specificity = sencitivityAndSpecificity(y_train, Bagging.predict(x_train))
-print("sencitivity on training data: ", sencitivity)
+sensitivity, specificity = sensitivityAndSpecificity(y_train, Bagging.predict(x_train))
+print("sensitivity on training data: ", sensitivity)
 print("specificity on training data: ", specificity)
 
-sencitivity, specificity = sencitivityAndSpecificity(y_test, Bagging.predict(x_test))
-print("sencitivity on training data: ", sencitivity)
-print("specificity on training data: ", specificity)
+sensitivity, specificity = sensitivityAndSpecificity(y_test, Bagging.predict(x_test))
+print("sensitivity on test data: ", sensitivity)
+print("specificity on test data: ", specificity)
 print("\n")
 
 # AdaBoost (Boosting) ----------------------------------------------------------
 
+
+
+
+# ----------------------------- Voting --------------------------------------------
+
+lr = LogisticRegression()
+dt = DecisionTreeClassifier()
+svm = SVC(kernel = 'poly', degree = 2 )
+
+Voting = VotingClassifier( estimators= [('lr',lr),('dt',dt),('svm',svm)], voting = 'hard')
+
+Voting.fit(x_train, y_train)
+
+print("-- VOTING --")
+
+sensitivity, specificity = sensitivityAndSpecificity(y_train, Voting.predict(x_train))
+print("sensitivity on training data: ", sensitivity)
+print("specificity on training data: ", specificity)
+
+sensitivity, specificity = sensitivityAndSpecificity(y_test, Voting.predict(x_test))
+print("sensitivity on test data: ", sensitivity)
+print("specificity on test data: ", specificity)
+print("\n")
