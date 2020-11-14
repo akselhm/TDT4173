@@ -13,32 +13,39 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-#read dataset
+# read dataset
 dataset = pd.read_csv('./data/heart.csv')
-#dataset.info()
 
-#split dataset into train and test sets
+# Summary statistics on dataset
+
+dataset.info()
+print('shape of dataset:')
+dataset.shape
+pd.set_option("display.float", "{:.2f}".format)
+dataset.describe()
+dataset.target.value_counts()
+
+# split dataset into train and test sets
 array = dataset.values
 X = array[:,0:-1]
 Y = array[:,-1]
 
-#print(X[:10])
-#print(Y[:10])
 
-x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=10)
+x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=10)
 
-#function to calculate sensitivity and specificity
+
+# function to calculate sensitivity and specificity
 def sensitivityAndSpecificity(y_true, y_pred):
     tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
     sensitivity = tp / (tp+fn)
     specificity = tn / (tn+fp)
     return sensitivity, specificity
 
-#make dataframes for presenting results
+# dataframes for presenting results
 trainingResults = pd.DataFrame(index = ['sensitivity', 'specificity'])
 testResults = pd.DataFrame(index = ['sensitivity', 'specificity'])
 
-#function for plotting convergence for Random Forest with increasing number of parameters
+# function for plotting convergence for Random Forest with increasing number of parameters
 def plotRFconvergence():
     n = 60
     sensitivity = np.zeros(n)
@@ -78,7 +85,7 @@ testResults['Decision Tree'] = np.array([sensitivity, specificity], dtype=np.flo
 
 #---------------------------- Random Forest Classifier (Bagging) -------------------------------------------
 
-RandomForest = RandomForestClassifier(n_estimators = 50)
+RandomForest = RandomForestClassifier(n_estimators = 50, max_samples = 0.5)
 RandomForest.fit(x_train,y_train)
 
 sensitivity, specificity = sensitivityAndSpecificity(y_train, RandomForest.predict(x_train))
@@ -133,10 +140,17 @@ sensitivity, specificity = sensitivityAndSpecificity(y_test, Voting.predict(x_te
 testResults['Voting'] = np.array([sensitivity, specificity], dtype=np.float32)
 """
 
-
+# Formate and print results 
 trainingResults = trainingResults.T
 testResults = testResults.T
 
+print('\n --Results on training data--')
+print(trainingResults)
+
+print('\n --Results on test data--')
+print(testResults)
+
+# plot results in scatter plot
 fig, ax = plt.subplots()
 ax.scatter(testResults.sensitivity.values, testResults.specificity.values, c=['tab:blue', 'tab:orange', 'tab:green', 'tab:red']) #add  'tab:gray' for voting 
 ax.set_xlim((0.5,1))
@@ -151,10 +165,5 @@ for i in range(len(testResults.index)):
 
 fig.savefig('test.png')
 
-print('\n --Results on training data--')
-print(trainingResults)
-
-print('\n --Results on test data--')
-print(testResults)
 
 
