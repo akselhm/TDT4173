@@ -9,7 +9,7 @@ from sklearn.svm import SVC
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import confusion_matrix
-from sklearn.metrics import roc_curve
+from sklearn.metrics import roc_curve, auc
 
 import matplotlib
 matplotlib.use('Agg')
@@ -86,7 +86,7 @@ sensitivity, specificity = sensitivityAndSpecificity(
 testResults['Decision Tree'] = np.array(
     [sensitivity, specificity], dtype=np.float32)
 
-fpr_dt, tpr_dt, _ = roc_curve(y_test, dTree.predict(x_test))
+fpr_dt, tpr_dt, _ = roc_curve(y_test, dTree.predict_proba(x_test)[:, 1])
 
 
 
@@ -105,7 +105,7 @@ sensitivity, specificity = sensitivityAndSpecificity(
 testResults['Random Forest'] = np.array(
     [sensitivity, specificity], dtype=np.float32)
 
-fpr_rf, tpr_rf, _ = roc_curve(y_test, RandomForest.predict(x_test))
+fpr_rf, tpr_rf, _ = roc_curve(y_test, RandomForest.predict_proba(x_test)[:, 1])
 
 # ------------------------- Bagging (w/ decision trees) -------------------------------------------------
 
@@ -122,7 +122,7 @@ sensitivity, specificity = sensitivityAndSpecificity(
     y_test, Bagging.predict(x_test))
 testResults['Bagging'] = np.array([sensitivity, specificity], dtype=np.float32)
 
-fpr_b, tpr_b, _ = roc_curve(y_test, Bagging.predict(x_test))
+fpr_b, tpr_b, _ = roc_curve(y_test, Bagging.predict_proba(x_test)[:, 1])
 
 # AdaBoost (Boosting) ----------------------------------------------------------
 
@@ -139,7 +139,7 @@ sensitivity, specificity = sensitivityAndSpecificity(
 testResults['AdaBoost'] = np.array(
     [sensitivity, specificity], dtype=np.float32)
 
-fpr_ab, tpr_ab, _ = roc_curve(y_test, ada.predict(x_test))
+fpr_ab, tpr_ab, _ = roc_curve(y_test, ada.predict_proba(x_test)[:, 1])
 
 
 # ----------------------------- Voting --------------------------------------------
@@ -197,10 +197,10 @@ def scatterPlot():
 def rocPlot():
     fig = plt.figure()
     plt.plot([0, 1], [0, 1], 'k--')
-    plt.plot(fpr_dt, tpr_dt, label='DT')
-    plt.plot(fpr_rf, tpr_rf, label='RF')
-    plt.plot(fpr_b, tpr_b, label='B')
-    plt.plot(fpr_ab, tpr_ab, label='AB')
+    plt.plot(fpr_dt, tpr_dt, label='DT (area = %0.2f)' % auc(fpr_dt, tpr_dt))
+    plt.plot(fpr_rf, tpr_rf, label='RF(area = %0.2f)' % auc(fpr_rf, tpr_rf))
+    plt.plot(fpr_b, tpr_b, label='Bagging (area = %0.2f)' % auc(fpr_b, tpr_b))
+    plt.plot(fpr_ab, tpr_ab, label='AdaBoost(area = %0.2f)' % auc(fpr_ab, tpr_ab))
     plt.xlabel('False positive rate')
     plt.ylabel('True positive rate')
     plt.title('ROC curve')
