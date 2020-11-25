@@ -38,8 +38,8 @@ def sensitivityAndSpecificity(y_true, y_pred):
     return sensitivity, specificity
 
 # dataframes for presenting results
-trainingResults = pd.DataFrame(index = ['sensitivity', 'specificity'])
-testResults = pd.DataFrame(index = ['sensitivity', 'specificity'])
+trainingResults = pd.DataFrame(index = ['accuracy','sensitivity', 'specificity'])
+testResults = pd.DataFrame(index = ['accuracy','sensitivity', 'specificity'])
 
 def addToTrainingD(method):
     sensitivity, specificity = sensitivityAndSpecificity(y_train, method.predict(x_train))
@@ -52,10 +52,10 @@ def plotRFconvergence():
     specificity = np.zeros(n)
     x = np.linspace(1, n, n)
     for i in range(n):
-        RandomForest = RandomForestClassifier(n_estimators=i+1)
-        RandomForest.fit(x_train, y_train)
+        randomForest = RandomForestClassifier(n_estimators=i+1)
+        randomForest.fit(x_train, y_train)
         sensitivity[i], specificity[i] = sensitivityAndSpecificity(
-            y_test, RandomForest.predict(x_test))
+            y_test, randomForest.predict(x_test))
     fig = plt.figure()
     plt.plot(x, sensitivity, label='sensitivity')
     plt.plot(x, specificity, label='specificity')
@@ -76,15 +76,13 @@ dTree = DecisionTreeClassifier()
 
 dTree.fit(x_train, y_train)
 
-sensitivity, specificity = sensitivityAndSpecificity(
-    y_train, dTree.predict(x_train))
-trainingResults['Decision Tree'] = np.array(
-    [sensitivity, specificity], dtype=np.float32)
+accuracy = dTree.score(x_train, y_train)
+sensitivity, specificity = sensitivityAndSpecificity( y_train, dTree.predict(x_train))
+trainingResults['Decision Tree'] = np.array([accuracy, sensitivity, specificity], dtype=np.float32)
 
-sensitivity, specificity = sensitivityAndSpecificity(
-    y_test, dTree.predict(x_test))
-testResults['Decision Tree'] = np.array(
-    [sensitivity, specificity], dtype=np.float32)
+accuracy = dTree.score(x_test,y_test)
+sensitivity, specificity = sensitivityAndSpecificity(y_test, dTree.predict(x_test))
+testResults['Decision Tree'] = np.array([accuracy,sensitivity, specificity], dtype=np.float32)
 
 fpr_dt, tpr_dt, _ = roc_curve(y_test, dTree.predict_proba(x_test)[:, 1])
 
@@ -93,25 +91,23 @@ predDT = dTree.predict(x_test)
 
 # ---------------------------- Random Forest Classifier (Bagging) -------------------------------------------
 
-RandomForest = RandomForestClassifier(n_estimators = 50)
-RandomForest.fit(x_train,y_train)
+randomForest = RandomForestClassifier(n_estimators = 50)
+randomForest.fit(x_train,y_train)
 
-sensitivity, specificity = sensitivityAndSpecificity(
-    y_train, RandomForest.predict(x_train))
-trainingResults['Random Forest'] = np.array(
-    [sensitivity, specificity], dtype=np.float32)
+accuracy = randomForest.score(x_train, y_train)
+sensitivity, specificity = sensitivityAndSpecificity(y_train, randomForest.predict(x_train))
+trainingResults['Random Forest'] = np.array([accuracy,sensitivity, specificity], dtype=np.float32)
 
-sensitivity, specificity = sensitivityAndSpecificity(
-    y_test, RandomForest.predict(x_test))
-testResults['Random Forest'] = np.array(
-    [sensitivity, specificity], dtype=np.float32)
+accuracy = randomForest.score(x_test,y_test)
+sensitivity, specificity = sensitivityAndSpecificity(y_test, randomForest.predict(x_test))
+testResults['Random Forest'] = np.array([accuracy, sensitivity, specificity], dtype=np.float32)
 
-fpr_rf, tpr_rf, _ = roc_curve(y_test, RandomForest.predict_proba(x_test)[:, 1])
+fpr_rf, tpr_rf, _ = roc_curve(y_test, randomForest.predict_proba(x_test)[:, 1])
 
-predRF = RandomForest.predict(x_test)
+predRF = randomForest.predict(x_test)
 
 # ------------------------- Bagging (w/ decision trees) -------------------------------------------------
-
+"""
 Bagging = BaggingClassifier(DecisionTreeClassifier(), max_samples=0.5, max_features=1.0, n_estimators=50)
 # NOTE: bad results. needs tuning
 Bagging.fit(x_train, y_train)
@@ -129,20 +125,19 @@ fpr_b, tpr_b, _ = roc_curve(y_test, Bagging.predict_proba(x_test)[:, 1])
 
 predBag = Bagging.predict(x_test) 
 
+"""
 # AdaBoost (Boosting) ----------------------------------------------------------
 
 ada = AdaBoostClassifier(n_estimators=60, learning_rate=1)
 ada.fit(x_train, y_train)
 
-sensitivity, specificity = sensitivityAndSpecificity(
-    y_train, ada.predict(x_train))
-trainingResults['AdaBoost'] = np.array(
-    [sensitivity, specificity], dtype=np.float32)
+accuracy = ada.score(x_train, y_train)
+sensitivity, specificity = sensitivityAndSpecificity(y_train, ada.predict(x_train))
+trainingResults['AdaBoost'] = np.array([accuracy, sensitivity, specificity], dtype=np.float32)
 
-sensitivity, specificity = sensitivityAndSpecificity(
-    y_test, ada.predict(x_test))
-testResults['AdaBoost'] = np.array(
-    [sensitivity, specificity], dtype=np.float32)
+accuracy = ada.score(x_test, y_test)
+sensitivity, specificity = sensitivityAndSpecificity(y_test, ada.predict(x_test))
+testResults['AdaBoost'] = np.array([accuracy, sensitivity, specificity], dtype=np.float32)
 
 fpr_ab, tpr_ab, _ = roc_curve(y_test, ada.predict_proba(x_test)[:, 1])
 
@@ -172,6 +167,7 @@ testResults['Voting'] = np.array([sensitivity, specificity], dtype=np.float32)
 # run functions ------------------
 
 # Formate and print results 
+
 trainingResults = trainingResults.T
 testResults = testResults.T
 
@@ -205,7 +201,7 @@ def rocPlot():
     plt.plot([0, 1], [0, 1], 'k--')
     plt.plot(fpr_dt, tpr_dt, label='DT (area = %0.2f)' % auc(fpr_dt, tpr_dt))
     plt.plot(fpr_rf, tpr_rf, label='RF(area = %0.2f)' % auc(fpr_rf, tpr_rf))
-    plt.plot(fpr_b, tpr_b, label='Bagging (area = %0.2f)' % auc(fpr_b, tpr_b))
+    #plt.plot(fpr_b, tpr_b, label='Bagging (area = %0.2f)' % auc(fpr_b, tpr_b))
     plt.plot(fpr_ab, tpr_ab, label='AdaBoost(area = %0.2f)' % auc(fpr_ab, tpr_ab))
     plt.xlabel('False positive rate')
     plt.ylabel('True positive rate')
@@ -240,8 +236,8 @@ def confM(true_y, pred_y):
     #figmat.savefig('data/confusionMatrix.png')
     
 
-figBag = confM(y_test,predBag)
-figBag.savefig('data/confusionMatrixBagging.png')
+#figBag = confM(y_test,predBag)
+#figBag.savefig('data/confusionMatrixBagging.png')
 
 figAda = confM(y_test,predAda)
 figAda.savefig('data/confusionMatrixAda.png')
