@@ -10,7 +10,7 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import roc_curve, auc
-
+import seaborn as sns
 import matplotlib
 matplotlib.use('Agg')
 
@@ -71,7 +71,7 @@ def plotRFconvergence():
 
 plotRFconvergence()
 
-# ------------------------- Decition Tree (To see difference) -----------------------------------------
+# ------------------------- Decision Tree (To see difference) -----------------------------------------
 dTree = DecisionTreeClassifier()
 
 dTree.fit(x_train, y_train)
@@ -88,11 +88,12 @@ testResults['Decision Tree'] = np.array(
 
 fpr_dt, tpr_dt, _ = roc_curve(y_test, dTree.predict_proba(x_test)[:, 1])
 
+predDT = dTree.predict(x_test) 
 
 
 # ---------------------------- Random Forest Classifier (Bagging) -------------------------------------------
 
-RandomForest = RandomForestClassifier(n_estimators = 50, max_samples = 0.5)
+RandomForest = RandomForestClassifier(n_estimators = 50)
 RandomForest.fit(x_train,y_train)
 
 sensitivity, specificity = sensitivityAndSpecificity(
@@ -106,6 +107,8 @@ testResults['Random Forest'] = np.array(
     [sensitivity, specificity], dtype=np.float32)
 
 fpr_rf, tpr_rf, _ = roc_curve(y_test, RandomForest.predict_proba(x_test)[:, 1])
+
+predRF = RandomForest.predict(x_test)
 
 # ------------------------- Bagging (w/ decision trees) -------------------------------------------------
 
@@ -124,6 +127,8 @@ testResults['Bagging'] = np.array([sensitivity, specificity], dtype=np.float32)
 
 fpr_b, tpr_b, _ = roc_curve(y_test, Bagging.predict_proba(x_test)[:, 1])
 
+predBag = Bagging.predict(x_test) 
+
 # AdaBoost (Boosting) ----------------------------------------------------------
 
 ada = AdaBoostClassifier(n_estimators=60, learning_rate=1)
@@ -141,6 +146,7 @@ testResults['AdaBoost'] = np.array(
 
 fpr_ab, tpr_ab, _ = roc_curve(y_test, ada.predict_proba(x_test)[:, 1])
 
+predAda = ada.predict(x_test)
 
 # ----------------------------- Voting --------------------------------------------
 """
@@ -210,3 +216,38 @@ def rocPlot():
 rocPlot()
 
 
+
+#--------- Making the confusion matrices----------#
+
+def confM(true_y, pred_y):
+    figmat,ax = plt.subplots()
+    data = {'y_Actual':    true_y, 
+            'y_Predicted': pred_y }
+
+    df = pd.DataFrame(data, columns=['y_Actual','y_Predicted'])
+   # group_names = ["True Neg","False Pos","False Neg","True Pos"]
+    mat = pd.crosstab(df['y_Actual'], df['y_Predicted'], rownames=['Actual'], colnames=['Predicted'], margins = True)
+
+    #text = np.array([['TN', 'FP', 'AN'], ['FN', 'TP', 'AP'], ['PN', 'PP', 'T']])
+   # labels = (np.array(["{0}\n{1:.2f}".format(text,data) for text, data in zip(text.flatten(), mat.flatten())])).reshape(3,3)
+    sns.set(font_scale=1.6)
+    sns.heatmap(mat, annot=True, fmt='', cbar = False) #cbar=False,square=True
+    bottom, top = ax.get_ylim()
+    ax.set_ylim(bottom + 0.5, top - 0.5)
+    ax.tick_params( labelsize=15)
+    
+    return figmat
+    #figmat.savefig('data/confusionMatrix.png')
+    
+
+figBag = confM(y_test,predBag)
+figBag.savefig('data/confusionMatrixBagging.png')
+
+figAda = confM(y_test,predAda)
+figAda.savefig('data/confusionMatrixAda.png')
+
+figDT = confM(y_test,predDT)
+figDT.savefig('data/confusionMatrixDT.png')
+
+figRF = confM(y_test,predRF)
+figRF.savefig('data/confusionMatrixRF.png')
