@@ -38,6 +38,7 @@ This program uses python 3.8.1 and the following libraries:
 
 Depending on what editor you use the initiation will differ. The editor used in the project was Visual Studio Code and as such running the program became extensivly easy with the plug in: "Code Runner".
 To add this extension in VScode go to the marketplace, type in "code runner" and install:
+<img width="303" alt="Screenshot 2020-11-26 at 21 19 30" src="https://user-images.githubusercontent.com/43234635/100390542-0d52e800-3031-11eb-86ea-a437bf18573e.png">
 
 
 
