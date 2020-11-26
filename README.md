@@ -12,17 +12,17 @@ This project was motivated by the rapid integration of machine learning methods 
 ## Language and libraries
 
 This program uses python 3.8.1 and the following libraries:
-Markup : * SkiLearn
+
+         * SkiLearn
          * Numpy
          * Seaborn
          * Matplotlib
-         * 
+         
 
 
 ## Methods
 
-The Ensamble Methods used in the project were:
-Markup : * AdaBoost
+         * AdaBoost
          * RandomForest
          * Bagging
          * Boosting
