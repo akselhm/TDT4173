@@ -34,9 +34,9 @@ def calcMetrics(classifier):
     # function for calculating the metric for a classifier using K-Fold Cross Validation
     # Metrics calculated are accuracy, sensitivity and specificity (given in metrics dictionary)
     # returns: a list with the mean values for the metrics [accuracy, sensitivity, specificity]
-
     results = cross_validate(classifier, X, Y, cv=kfold, scoring= metrics)
     print(results) # print results on test set for all folds, as well as training time and score time
+
 
     acc = np.mean(results.get('test_accuracy'))
     sens = np.mean(results.get('test_sensitivity'))
@@ -105,6 +105,7 @@ predDT = cross_val_predict(dTree, X, Y, cv=kfold)
 # save the  mean true positive rate and false negative rate
 fpr_dt, tpr_dt = rocCurveKFold(dTree, 'dTree')
 
+
 # ------------------- RF --------------------------
 
 rf = RandomForestClassifier(n_estimators = 50, max_samples=0.5)
@@ -115,9 +116,11 @@ testResults['Random Forest'] = np.array(
 
 predRF = cross_val_predict(rf, X, Y, cv=kfold)
 
+
 fpr_rf, tpr_rf = rocCurveKFold(rf, 'RF')
 
 # ----------------- AdaBoost ----------------------
+
 
 ada = AdaBoostClassifier(base_estimator=DecisionTreeClassifier(max_depth=4), n_estimators = 100, learning_rate=1, algorithm= 'SAMME' )
 
@@ -195,7 +198,6 @@ def confM(true_y, pred_y):
     
     return figmat
     #figmat.savefig('data/confusionMatrix.png')
- 
 
 figAda = confM(Y, predAda)
 figAda.savefig('results/confusionMatrixAda.png')
