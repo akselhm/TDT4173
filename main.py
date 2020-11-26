@@ -159,14 +159,20 @@ def scatterPlot():
 
 def rocPlot():
     fig = plt.figure()
-    plt.plot([0, 1], [0, 1], 'k--')
-    plt.plot(fpr_dt, tpr_dt, label='DT (area = %0.2f)' % auc(fpr_dt, tpr_dt))
-    plt.plot(fpr_rf, tpr_rf, label='RF(area = %0.2f)' % auc(fpr_rf, tpr_rf))
-    #plt.plot(fpr_b, tpr_b, label='Bagging (area = %0.2f)' % auc(fpr_b, tpr_b))
-    plt.plot(fpr_ab, tpr_ab, label='AdaBoost(area = %0.2f)' % auc(fpr_ab, tpr_ab))
+    plt.plot(fpr_dt, tpr_dt, color='b',
+            label=r'Decision Tree (AUC = %0.2f)' % auc(fpr_dt, tpr_dt),
+            lw=2, alpha=.8)
+    plt.plot(fpr_rf, tpr_rf, color='g',
+            label=r'Random Forest (AUC = %0.2f)' % auc(fpr_rf, tpr_rf),
+            lw=2, alpha=.8)
+    plt.plot(fpr_ab, tpr_ab, color='m',
+            label=r'AdaBoost (AUC = %0.2f)' % auc(fpr_ab, tpr_ab),
+            lw=2, alpha=.8)
+    plt.plot([0, 1], [0, 1], linestyle='--', lw=2, color='r',
+            label='Chance', alpha=.8)
     plt.xlabel('False positive rate')
     plt.ylabel('True positive rate')
-    plt.title('ROC curve')
+    plt.title(' Comparison of mean ROC curves')
     plt.legend(loc='best')
     fig.savefig('results/rocplot.png')
 
