@@ -35,12 +35,7 @@ This program uses python 3.8.1 and the following libraries:
 
 Depending on what editor you use the initiation will differ. The editor used in the project was Visual Studio Code and as such running the program becomes extensivly easy with the plug in: 
 
-You can also use the terminal in your prefered editor to run the program
-
-
-
-
-
+You can also use the terminal in your prefered editor to run the progr
 
 
 Open your virtual env and run python main.py
