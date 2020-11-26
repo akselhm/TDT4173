@@ -1,188 +1,149 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import BaggingClassifier, RandomForestClassifier, AdaBoostClassifier, VotingClassifier
+from sklearn.model_selection import train_test_split, cross_validate, StratifiedKFold, cross_val_predict
+from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.svm import SVC
-from sklearn.naive_bayes import MultinomialNB
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.metrics import confusion_matrix
-from sklearn.metrics import roc_curve, auc
+from sklearn.metrics import confusion_matrix, roc_curve, auc, make_scorer, accuracy_score, recall_score, plot_roc_curve
 import seaborn as sns
 import matplotlib
 matplotlib.use('Agg')
 
 # read dataset
 dataset = pd.read_csv('./data/heart.csv')
-# dataset.info()
 
-# split dataset into train and test sets
+# split dataset
 array = dataset.values
 X = array[:, 0:-1]
 Y = array[:, -1]
 
-# print(X[:10])
-# print(Y[:10])
+# make Statisfied K-Fold Crossvalidation
+kfold = StratifiedKFold(n_splits=5)
+
+# Define metrics to evaluate  
+metrics = {'accuracy': make_scorer(accuracy_score),
+    'sensitivity': make_scorer(recall_score),
+    'specificity': make_scorer(recall_score,pos_label=0.0)}
 
 
-x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=10)
-
-
-# function to calculate sensitivity and specificity
-def sensitivityAndSpecificity(y_true, y_pred):
-    tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
-    sensitivity = tp / (tp+fn)
-    specificity = tn / (tn+fp)
-    return sensitivity, specificity
-
-# dataframes for presenting results
-trainingResults = pd.DataFrame(index = ['accuracy','sensitivity', 'specificity'])
+# dataframe for saving and presenting results
 testResults = pd.DataFrame(index = ['accuracy','sensitivity', 'specificity'])
 
-def addToTrainingD(method):
-    sensitivity, specificity = sensitivityAndSpecificity(y_train, method.predict(x_train))
-    trainingResults['Decision Tree'] = np.array([sensitivity, specificity], dtype=np.float32)
 
-# function for plotting convergence for Random Forest with increasing number of parameters
-def plotRFconvergence():
-    n = 60
-    sensitivity = np.zeros(n)
-    specificity = np.zeros(n)
-    x = np.linspace(1, n, n)
-    for i in range(n):
-        randomForest = RandomForestClassifier(n_estimators=i+1)
-        randomForest.fit(x_train, y_train)
-        sensitivity[i], specificity[i] = sensitivityAndSpecificity(
-            y_test, randomForest.predict(x_test))
-    fig = plt.figure()
-    plt.plot(x, sensitivity, label='sensitivity')
-    plt.plot(x, specificity, label='specificity')
-    plt.title('Metrics for Random Forest with increasing number of estimators')
-    axes = plt.gca()
-    axes.set_ylim([0, 1])
-    axes.set_xlim([1, n+1])
-    plt.xlabel('number of estimators')
-    plt.ylabel('score')
-    plt.legend()
-    fig.savefig('RFconvergence.png')
+def calcMetrics(classifier):
+    # function for calculating the metric for a classifier using K-Fold Cross Validation
+    # Metrics calculated are accuracy, sensitivity and specificity (given in metrics dictionary)
+    # returns: a list with the mean values for the metrics [accuracy, sensitivity, specificity]
+    results = cross_validate(classifier, X, Y, cv=kfold, scoring= metrics)
+    print(results) # print results on test set for all folds, as well as training time and score time
 
 
-plotRFconvergence()
+    acc = np.mean(results.get('test_accuracy'))
+    sens = np.mean(results.get('test_sensitivity'))
+    spec = np.mean(results.get('test_specificity'))
+    return [acc, sens, spec]
 
-# ------------------------- Decision Tree (To see difference) -----------------------------------------
+
+def rocCurveKFold(classifier, name):
+    # function for plotting a roc curve for a given classifier
+    # A roc curve is produced for each fold in the kFold, as well as a mean ROC
+    # returns: mean false positive rate and false negative rate
+    tprs = []
+    aucs = []
+    mean_fpr = np.linspace(0, 1, 100)
+
+    fig1, ax = plt.subplots()
+    for i, (train, test) in enumerate(kfold.split(X, Y)):
+        classifier.fit(X[train], Y[train])
+        viz = plot_roc_curve(classifier, X[test], Y[test],
+                            name='ROC fold {}'.format(i),
+                            alpha=0.3, lw=1, ax=ax)
+        interp_tpr = np.interp(mean_fpr, viz.fpr, viz.tpr)
+        interp_tpr[0] = 0.0
+        tprs.append(interp_tpr)
+        aucs.append(viz.roc_auc)
+
+    ax.plot([0, 1], [0, 1], linestyle='--', lw=2, color='r',
+            label='Chance', alpha=.8)
+
+    mean_tpr = np.mean(tprs, axis=0)
+    mean_tpr[-1] = 1.0
+    mean_auc = auc(mean_fpr, mean_tpr)
+    std_auc = np.std(aucs)
+    ax.plot(mean_fpr, mean_tpr, color='b',
+            label=r'Mean ROC (AUC = %0.2f $\pm$ %0.2f)' % (mean_auc, std_auc),
+            lw=2, alpha=.8)
+
+    std_tpr = np.std(tprs, axis=0)
+    tprs_upper = np.minimum(mean_tpr + std_tpr, 1)
+    tprs_lower = np.maximum(mean_tpr - std_tpr, 0)
+    ax.fill_between(mean_fpr, tprs_lower, tprs_upper, color='grey', alpha=.2,
+                    label=r'$\pm$ 1 std. dev.')
+
+    ax.set(xlim=[-0.05, 1.05], ylim=[-0.05, 1.05],
+        title="Receiver operating characteristic " + name)
+    ax.legend(loc="lower right")
+    fig1.savefig('results/rocplot'+name+'.png')
+
+    return mean_fpr, mean_tpr
+
+# ------------------ dTree ------------------------
+
+# make classifier
 dTree = DecisionTreeClassifier()
 
-dTree.fit(x_train, y_train)
+# calculate metrics for Decision Tree and add to dataframe
+dTreemetrics = calcMetrics(dTree)
+testResults['Decision Tree'] = np.array(
+    dTreemetrics, dtype=np.float32)
 
-accuracy = dTree.score(x_train, y_train)
-sensitivity, specificity = sensitivityAndSpecificity( y_train, dTree.predict(x_train))
-trainingResults['Decision Tree'] = np.array([accuracy, sensitivity, specificity], dtype=np.float32)
+# make an array with predicted values for the descision tree
+# the array is used to make a confusion matrix
+predDT = cross_val_predict(dTree, X, Y, cv=kfold)
 
-accuracy = dTree.score(x_test,y_test)
-sensitivity, specificity = sensitivityAndSpecificity(y_test, dTree.predict(x_test))
-testResults['Decision Tree'] = np.array([accuracy,sensitivity, specificity], dtype=np.float32)
-
-fpr_dt, tpr_dt, _ = roc_curve(y_test, dTree.predict_proba(x_test)[:, 1])
-
-predDT = dTree.predict(x_test) 
+# plot a roc curve for the decision tree
+# save the  mean true positive rate and false negative rate
+fpr_dt, tpr_dt = rocCurveKFold(dTree, 'dTree')
 
 
-# ---------------------------- Random Forest Classifier (Bagging) -------------------------------------------
+# ------------------- RF --------------------------
 
-randomForest = RandomForestClassifier(n_estimators = 50)
-randomForest.fit(x_train,y_train)
+rf = RandomForestClassifier(n_estimators = 50, max_samples=0.5)
 
-accuracy = randomForest.score(x_train, y_train)
-sensitivity, specificity = sensitivityAndSpecificity(y_train, randomForest.predict(x_train))
-trainingResults['Random Forest'] = np.array([accuracy,sensitivity, specificity], dtype=np.float32)
+rfmetrics = calcMetrics(rf)
+testResults['Random Forest'] = np.array(
+    rfmetrics, dtype=np.float32)
 
-accuracy = randomForest.score(x_test,y_test)
-sensitivity, specificity = sensitivityAndSpecificity(y_test, randomForest.predict(x_test))
-testResults['Random Forest'] = np.array([accuracy, sensitivity, specificity], dtype=np.float32)
+predRF = cross_val_predict(rf, X, Y, cv=kfold)
 
-fpr_rf, tpr_rf, _ = roc_curve(y_test, randomForest.predict_proba(x_test)[:, 1])
 
-predRF = randomForest.predict(x_test)
+fpr_rf, tpr_rf = rocCurveKFold(rf, 'RF')
 
-# ------------------------- Bagging (w/ decision trees) -------------------------------------------------
-"""
-Bagging = BaggingClassifier(DecisionTreeClassifier(), max_samples=0.5, max_features=1.0, n_estimators=50)
-# NOTE: bad results. needs tuning
-Bagging.fit(x_train, y_train)
+# ----------------- AdaBoost ----------------------
 
-sensitivity, specificity = sensitivityAndSpecificity(
-    y_train, Bagging.predict(x_train))
-trainingResults['Bagging'] = np.array(
-    [sensitivity, specificity], dtype=np.float32)
 
-sensitivity, specificity = sensitivityAndSpecificity(
-    y_test, Bagging.predict(x_test))
-testResults['Bagging'] = np.array([sensitivity, specificity], dtype=np.float32)
+ada = AdaBoostClassifier(base_estimator=DecisionTreeClassifier(max_depth=4), n_estimators = 100, learning_rate=1, algorithm= 'SAMME' )
 
-fpr_b, tpr_b, _ = roc_curve(y_test, Bagging.predict_proba(x_test)[:, 1])
+adametrics = calcMetrics(ada)
+testResults['AdaBoost'] = np.array(
+    adametrics, dtype=np.float32)
 
-predBag = Bagging.predict(x_test) 
+predAda = cross_val_predict(ada, X, Y, cv=kfold)
+fpr_ab, tpr_ab = rocCurveKFold(ada, 'AB')
 
-"""
-# AdaBoost (Boosting) ----------------------------------------------------------
-
-ada = AdaBoostClassifier(n_estimators=60, learning_rate=1)
-ada.fit(x_train, y_train)
-
-accuracy = ada.score(x_train, y_train)
-sensitivity, specificity = sensitivityAndSpecificity(y_train, ada.predict(x_train))
-trainingResults['AdaBoost'] = np.array([accuracy, sensitivity, specificity], dtype=np.float32)
-
-accuracy = ada.score(x_test, y_test)
-sensitivity, specificity = sensitivityAndSpecificity(y_test, ada.predict(x_test))
-testResults['AdaBoost'] = np.array([accuracy, sensitivity, specificity], dtype=np.float32)
-
-fpr_ab, tpr_ab, _ = roc_curve(y_test, ada.predict_proba(x_test)[:, 1])
-
-predAda = ada.predict(x_test)
-
-# ----------------------------- Voting --------------------------------------------
-"""
-lr = LogisticRegression(max_iter=500)
-dt = DecisionTreeClassifier()
-svm = SVC(kernel = 'poly', degree = 2 )
-kn = KNeighborsClassifier(n_neighbors=7)
-clf = MultinomialNB()
-
-Voting = VotingClassifier( estimators= [('clf',clf),('dt',dt),('svm',svm), ('lr', lr), ('kn', kn)], voting = 'hard')
-
-Voting.fit(x_train, y_train)
-
-print("-- VOTING --")
-
-sensitivity, specificity = sensitivityAndSpecificity(y_train, Voting.predict(x_train))
-trainingResults['Voting'] = np.array([sensitivity, specificity], dtype=np.float32)
-
-sensitivity, specificity = sensitivityAndSpecificity(y_test, Voting.predict(x_test))
-testResults['Voting'] = np.array([sensitivity, specificity], dtype=np.float32)
-"""
 
 # run functions ------------------
 
 # Formate and print results 
-
-trainingResults = trainingResults.T
 testResults = testResults.T
-
-print('\n --Results on training data--')
-print(trainingResults)
 
 print('\n --Results on test data--')
 print(testResults)
 
 def scatterPlot():
     # plot results in scatter plot
-    # must have four methods
     fig, ax = plt.subplots()
-    ax.scatter(testResults.sensitivity.values, testResults.specificity.values, c=[
-'tab:blue', 'tab:orange', 'tab:green', 'tab:red'])  # add  'tab:gray' for voting
+    ax.scatter(testResults.sensitivity.values, testResults.specificity.values)  
     ax.set_xlim((0.5, 1))
     ax.set_ylim((0.5, 1))
     plt.xlabel('sensitivity')
@@ -194,7 +155,7 @@ def scatterPlot():
         ax.annotate(
             testResults.index[i], (testResults.sensitivity.values[i], testResults.specificity.values[i]))
 
-    fig.savefig('data/test.png')
+    fig.savefig('results/test.png')
 
 def rocPlot():
     fig = plt.figure()
@@ -207,15 +168,18 @@ def rocPlot():
     plt.ylabel('True positive rate')
     plt.title('ROC curve')
     plt.legend(loc='best')
-    fig.savefig('data/rocplot.png')
+    fig.savefig('results/rocplot.png')
 
 rocPlot()
-
 
 
 #--------- Making the confusion matrices----------#
 
 def confM(true_y, pred_y):
+    # function for making the confusion matrices
+    # parameters: 
+    #   y_true: 
+    # returns: a figure of the confusion matrix
     figmat,ax = plt.subplots()
     data = {'y_Actual':    true_y, 
             'y_Predicted': pred_y }
@@ -227,23 +191,19 @@ def confM(true_y, pred_y):
     #text = np.array([['TN', 'FP', 'AN'], ['FN', 'TP', 'AP'], ['PN', 'PP', 'T']])
    # labels = (np.array(["{0}\n{1:.2f}".format(text,data) for text, data in zip(text.flatten(), mat.flatten())])).reshape(3,3)
     sns.set(font_scale=1.6)
-    sns.heatmap(mat, annot=True, fmt='', cbar = False) #cbar=False,square=True
+    sns.heatmap(mat, annot=True, fmt='', cmap = "Blues") #cbar=False,square=True
     bottom, top = ax.get_ylim()
     ax.set_ylim(bottom + 0.5, top - 0.5)
     ax.tick_params( labelsize=15)
     
     return figmat
     #figmat.savefig('data/confusionMatrix.png')
-    
 
-#figBag = confM(y_test,predBag)
-#figBag.savefig('data/confusionMatrixBagging.png')
+figAda = confM(Y, predAda)
+figAda.savefig('results/confusionMatrixAda.png')
 
-figAda = confM(y_test,predAda)
-figAda.savefig('data/confusionMatrixAda.png')
+figDT = confM(Y, predDT)
+figDT.savefig('results/confusionMatrixDT.png')
 
-figDT = confM(y_test,predDT)
-figDT.savefig('data/confusionMatrixDT.png')
-
-figRF = confM(y_test,predRF)
-figRF.savefig('data/confusionMatrixRF.png')
+figRF = confM(Y, predRF)
+figRF.savefig('results/confusionMatrixRF.png')
