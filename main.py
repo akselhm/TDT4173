@@ -188,7 +188,7 @@ def confM(true_y, pred_y):
     #text = np.array([['TN', 'FP', 'AN'], ['FN', 'TP', 'AP'], ['PN', 'PP', 'T']])
    # labels = (np.array(["{0}\n{1:.2f}".format(text,data) for text, data in zip(text.flatten(), mat.flatten())])).reshape(3,3)
     sns.set(font_scale=1.6)
-    sns.heatmap(mat, annot=True, fmt='', cbar = False) #cbar=False,square=True
+    sns.heatmap(mat, annot=True, fmt='', cmap = "Blues") #cbar=False,square=True
     bottom, top = ax.get_ylim()
     ax.set_ylim(bottom + 0.5, top - 0.5)
     ax.tick_params( labelsize=15)
