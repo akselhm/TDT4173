@@ -20,6 +20,7 @@ This program uses python 3.8.1 and the following libraries:
          * Numpy
          * Seaborn
          * Matplotlib
+         * Pandas
          
 
 
@@ -27,8 +28,6 @@ This program uses python 3.8.1 and the following libraries:
 
          * AdaBoost
          * RandomForest
-         * Bagging
-         * Boosting
          * Decision Trees
 
 
@@ -36,6 +35,14 @@ This program uses python 3.8.1 and the following libraries:
 
 Depending on what editor you use the initiation will differ. The editor used in the project was Visual Studio Code and as such running the program becomes extensivly easy with the plug in: 
 
-It is also possible to set up a virtual environment with the required libraries: https://code.visualstudio.com/docs/python/data-science-tutorial
+You can also use the terminal in your prefered editor to run the program
 
-Estimated run time: 18 sec
+
+
+
+
+
+
+Open your virtual env and run python main.py
+                          python data_representation.py
+
