@@ -4,6 +4,9 @@
 This repository contains the program of a graded project in the course TDT4173 - Machine Learning at Norwegian University of Science and Technology.
 
 
+### NOTE ###
+
+The code is heavily commented and should be intutive for the novel reader.
 
 ## Motivation
 This project was motivated by the rapid integration of machine learning methods in the field of medicine. Since heart diseases rarely show any symptoms programs, such as ours, can have an enourmous impact on the speed and reliability of diaganosis and prognosis on patients who may have heart diseases. 
