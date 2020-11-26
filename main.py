@@ -11,69 +11,32 @@ matplotlib.use('Agg')
 
 # read dataset
 dataset = pd.read_csv('./data/heart.csv')
-# dataset.info()
 
-# split dataset into train and test sets
+# split dataset
 array = dataset.values
 X = array[:, 0:-1]
 Y = array[:, -1]
 
-# print(X[:10])
-# print(Y[:10])
-
-
-x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=10)
+# make Statisfied K-Fold Crossvalidation
 kfold = StratifiedKFold(n_splits=5)
 
+# Define metrics to evaluate  
 metrics = {'accuracy': make_scorer(accuracy_score),
     'sensitivity': make_scorer(recall_score),
     'specificity': make_scorer(recall_score,pos_label=0.0)}
 
 
-# function to calculate sensitivity and specificity
-def sensitivityAndSpecificity(y_true, y_pred):
-    tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
-    sensitivity = tp / (tp+fn)
-    specificity = tn / (tn+fp)
-    return sensitivity, specificity
-
-# dataframes for presenting results
-trainingResults = pd.DataFrame(index = ['accuracy','sensitivity', 'specificity'])
+# dataframe for saving and presenting results
 testResults = pd.DataFrame(index = ['accuracy','sensitivity', 'specificity'])
 
-# function for plotting convergence for Random Forest with increasing number of parameters
-def plotRFconvergence():
-    n = 60
-    sensitivity = np.zeros(n)
-    specificity = np.zeros(n)
-    x = np.linspace(1, n, n)
-    for i in range(n):
-        RandomForest = RandomForestClassifier(n_estimators=i+1)
-        RandomForest.fit(x_train, y_train)
-        sensitivity[i], specificity[i] = sensitivityAndSpecificity(
-            y_test, RandomForest.predict(x_test))
-    fig = plt.figure()
-    plt.plot(x, sensitivity, label='sensitivity')
-    plt.plot(x, specificity, label='specificity')
-    plt.title('Metrics for Random Forest with increasing number of estimators')
-    axes = plt.gca()
-    axes.set_ylim([0, 1])
-    axes.set_xlim([1, n+1])
-    plt.xlabel('number of estimators')
-    plt.ylabel('score')
-    plt.legend()
-    fig.savefig('RFconvergence.png')
-
-
-#plotRFconvergence()
 
 def calcMetrics(classifier):
     # function for calculating the metric for a classifier using K-Fold Cross Validation
-    # Metrics calculated are accuracy, sensitivity and specificity
-    # returns: an array with the mean values for the metrics [accuracy, sensitivity, specificity]
-    #mean_results = np.zeros(3)
+    # Metrics calculated are accuracy, sensitivity and specificity (given in metrics dictionary)
+    # returns: a list with the mean values for the metrics [accuracy, sensitivity, specificity]
+
     results = cross_validate(classifier, X, Y, cv=kfold, scoring= metrics)
-    print(results)
+    print(results) # print results on test set for all folds, as well as training time and score time
 
     acc = np.mean(results.get('test_accuracy'))
     sens = np.mean(results.get('test_sensitivity'))
@@ -82,8 +45,9 @@ def calcMetrics(classifier):
 
 
 def rocCurveKFold(classifier, name):
-    #function for making a roc curve for a given classifier
+    # function for plotting a roc curve for a given classifier
     # A roc curve is produced for each fold in the kFold, as well as a mean ROC
+    # returns: mean false positive rate and false negative rate
     tprs = []
     aucs = []
     mean_fpr = np.linspace(0, 1, 100)
@@ -117,24 +81,31 @@ def rocCurveKFold(classifier, name):
                     label=r'$\pm$ 1 std. dev.')
 
     ax.set(xlim=[-0.05, 1.05], ylim=[-0.05, 1.05],
-        title="Receiver operating characteristic" + name)
+        title="Receiver operating characteristic " + name)
     ax.legend(loc="lower right")
-    fig1.savefig('data/rocplot'+name+'.png')
+    fig1.savefig('results/rocplot'+name+'.png')
 
     return mean_fpr, mean_tpr
 
-#kfold test ----------------------------
-# dTree ---------------
+# ------------------ dTree ------------------------
+
+# make classifier
 dTree = DecisionTreeClassifier()
 
+# calculate metrics for Decision Tree and add to dataframe
 dTreemetrics = calcMetrics(dTree)
 testResults['Decision Tree'] = np.array(
     dTreemetrics, dtype=np.float32)
 
-dTreepred = cross_val_predict(dTree, X, Y, cv=kfold)
+# make an array with predicted values for the descision tree
+# the array is used to make a confusion matrix
+predDT = cross_val_predict(dTree, X, Y, cv=kfold)
+
+# plot a roc curve for the decision tree
+# save the  mean true positive rate and false negative rate
 fpr_dt, tpr_dt = rocCurveKFold(dTree, 'dTree')
 
-# RF ----------------------------------
+# ------------------- RF --------------------------
 
 rf = RandomForestClassifier(n_estimators = 50, max_samples=0.5)
 
@@ -142,10 +113,11 @@ rfmetrics = calcMetrics(rf)
 testResults['Random Forest'] = np.array(
     rfmetrics, dtype=np.float32)
 
-rfpred = cross_val_predict(rf, X, Y, cv=kfold)
+predRF = cross_val_predict(rf, X, Y, cv=kfold)
+
 fpr_rf, tpr_rf = rocCurveKFold(rf, 'RF')
 
-# AdaBoost -------------------------
+# ----------------- AdaBoost ----------------------
 
 ada = AdaBoostClassifier(base_estimator=DecisionTreeClassifier(max_depth=4), n_estimators = 100, learning_rate=1, algorithm= 'SAMME' )
 
@@ -153,87 +125,22 @@ adametrics = calcMetrics(ada)
 testResults['AdaBoost'] = np.array(
     adametrics, dtype=np.float32)
 
-rfpred = cross_val_predict(ada, X, Y, cv=kfold)
+predAda = cross_val_predict(ada, X, Y, cv=kfold)
 fpr_ab, tpr_ab = rocCurveKFold(ada, 'AB')
 
 
-
-"""
-# ------------------------- Decision Tree (To see difference) -----------------------------------------
-dTree = DecisionTreeClassifier()
-
-dTree.fit(x_train, y_train)
-
-sensitivity, specificity = sensitivityAndSpecificity(
-    y_train, dTree.predict(x_train))
-trainingResults['Decision Tree'] = np.array(
-    [sensitivity, specificity], dtype=np.float32)
-
-sensitivity, specificity = sensitivityAndSpecificity(
-    y_test, dTree.predict(x_test))
-testResults['Decision Tree'] = np.array(
-    [sensitivity, specificity], dtype=np.float32)
-
-fpr_dt, tpr_dt, _ = roc_curve(y_test, dTree.predict_proba(x_test)[:, 1])
-
-predDT = dTree.predict(x_test) 
-
-
-# ---------------------------- Random Forest Classifier (Bagging) -------------------------------------------
-
-RandomForest = RandomForestClassifier(n_estimators = 50)
-RandomForest.fit(x_train,y_train)
-
-sensitivity, specificity = sensitivityAndSpecificity(
-    y_train, RandomForest.predict(x_train))
-trainingResults['Random Forest'] = np.array(
-    [sensitivity, specificity], dtype=np.float32)
-
-sensitivity, specificity = sensitivityAndSpecificity(
-    y_test, RandomForest.predict(x_test))
-testResults['Random Forest'] = np.array(
-    [sensitivity, specificity], dtype=np.float32)
-
-fpr_rf, tpr_rf, _ = roc_curve(y_test, RandomForest.predict_proba(x_test)[:, 1])
-
-predRF = RandomForest.predict(x_test)
-
-
-
-# AdaBoost (Boosting) ----------------------------------------------------------
-
-ada = AdaBoostClassifier(n_estimators=60, learning_rate=1)
-ada.fit(x_train, y_train)
-
-sensitivity, specificity = sensitivityAndSpecificity(y_train, ada.predict(x_train))
-trainingResults['AdaBoost'] = np.array([sensitivity, specificity], dtype=np.float32)
-
-sensitivity, specificity = sensitivityAndSpecificity(
-    y_test, ada.predict(x_test))
-testResults['AdaBoost'] = np.array(
-    [sensitivity, specificity], dtype=np.float32)
-
-fpr_ab, tpr_ab, _ = roc_curve(y_test, ada.predict_proba(x_test)[:, 1])
-
-predAda = ada.predict(x_test)
-"""
 # run functions ------------------
 
 # Formate and print results 
-#trainingResults = trainingResults.T
 testResults = testResults.T
-
-#print('\n --Results on training data--')
-#print(trainingResults)
 
 print('\n --Results on test data--')
 print(testResults)
 
 def scatterPlot():
     # plot results in scatter plot
-    # must have four methods
     fig, ax = plt.subplots()
-    ax.scatter(testResults.sensitivity.values, testResults.specificity.values)  # c=['tab:blue', 'tab:orange', 'tab:green', 'tab:red']add  'tab:gray' for voting
+    ax.scatter(testResults.sensitivity.values, testResults.specificity.values)  
     ax.set_xlim((0.5, 1))
     ax.set_ylim((0.5, 1))
     plt.xlabel('sensitivity')
@@ -245,7 +152,7 @@ def scatterPlot():
         ax.annotate(
             testResults.index[i], (testResults.sensitivity.values[i], testResults.specificity.values[i]))
 
-    fig.savefig('data/test.png')
+    fig.savefig('results/test.png')
 
 def rocPlot():
     fig = plt.figure()
@@ -258,15 +165,18 @@ def rocPlot():
     plt.ylabel('True positive rate')
     plt.title('ROC curve')
     plt.legend(loc='best')
-    fig.savefig('data/rocplot.png')
+    fig.savefig('results/rocplot.png')
 
 rocPlot()
 
 
-"""
 #--------- Making the confusion matrices----------#
 
 def confM(true_y, pred_y):
+    # function for making the confusion matrices
+    # parameters: 
+    #   y_true: 
+    # returns: a figure of the confusion matrix
     figmat,ax = plt.subplots()
     data = {'y_Actual':    true_y, 
             'y_Predicted': pred_y }
@@ -285,20 +195,13 @@ def confM(true_y, pred_y):
     
     return figmat
     #figmat.savefig('data/confusionMatrix.png')
-    
+ 
 
-test = confM(Y, dTreepred)
-test.savefig('data/confusionMatrixtest.png')
+figAda = confM(Y, predAda)
+figAda.savefig('results/confusionMatrixAda.png')
 
-#figBag = confM(y_test,predBag)
-#figBag.savefig('data/confusionMatrixBagging.png')
+figDT = confM(Y, predDT)
+figDT.savefig('results/confusionMatrixDT.png')
 
-figAda = confM(y_test,predAda)
-figAda.savefig('data/confusionMatrixAda.png')
-
-figDT = confM(y_test,predDT)
-figDT.savefig('data/confusionMatrixDT.png')
-
-figRF = confM(y_test,predRF)
-figRF.savefig('data/confusionMatrixRF.png')
-"""
+figRF = confM(Y, predRF)
+figRF.savefig('results/confusionMatrixRF.png')
