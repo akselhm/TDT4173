@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split, cross_validate, StratifiedKFold, cross_val_predict
+from sklearn.model_selection import cross_validate, StratifiedKFold, cross_val_predict
 from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import confusion_matrix, roc_curve, auc, make_scorer, accuracy_score, recall_score, plot_roc_curve
@@ -20,7 +20,7 @@ Y = array[:, -1]
 # make Statisfied K-Fold Crossvalidation
 kfold = StratifiedKFold(n_splits=5)
 
-# Define metrics to evaluate  
+# Metrics to evaluate the methods
 metrics = {'accuracy': make_scorer(accuracy_score),
     'sensitivity': make_scorer(recall_score),
     'specificity': make_scorer(recall_score,pos_label=0.0)}
@@ -108,7 +108,7 @@ fpr_dt, tpr_dt = rocCurveKFold(dTree, 'dTree')
 
 # ------------------- RF --------------------------
 
-rf = RandomForestClassifier(n_estimators = 50, max_samples=0.5)
+rf = RandomForestClassifier(n_estimators = 70, max_samples=0.5, max_features=0.5)
 
 rfmetrics = calcMetrics(rf)
 testResults['Random Forest'] = np.array(
@@ -122,7 +122,7 @@ fpr_rf, tpr_rf = rocCurveKFold(rf, 'RF')
 # ----------------- AdaBoost ----------------------
 
 
-ada = AdaBoostClassifier(base_estimator=DecisionTreeClassifier(max_depth=4), n_estimators = 100, learning_rate=1, algorithm= 'SAMME' )
+ada = AdaBoostClassifier(base_estimator=DecisionTreeClassifier(max_depth=6), n_estimators = 50, learning_rate=1, algorithm= 'SAMME' )
 
 adametrics = calcMetrics(ada)
 testResults['AdaBoost'] = np.array(
@@ -156,6 +156,8 @@ def scatterPlot():
             testResults.index[i], (testResults.sensitivity.values[i], testResults.specificity.values[i]))
 
     fig.savefig('results/test.png')
+
+scatterPlot()
 
 def rocPlot():
     fig = plt.figure()
