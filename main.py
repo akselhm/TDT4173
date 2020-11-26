@@ -156,16 +156,12 @@ def scatterPlot():
 
 def rocPlot():
     fig = plt.figure()
-    #plt.plot([0, 1], [0, 1], 'k--')
-    #plt.plot(fpr_dt, tpr_dt, label='DT (area = %0.2f)' % auc(fpr_dt, tpr_dt))
     plt.plot(fpr_dt, tpr_dt, color='b',
             label=r'Decision Tree (AUC = %0.2f)' % auc(fpr_dt, tpr_dt),
             lw=2, alpha=.8)
-    #plt.plot(fpr_rf, tpr_rf, label='RF(area = %0.2f)' % auc(fpr_rf, tpr_rf))
     plt.plot(fpr_rf, tpr_rf, color='g',
             label=r'Random Forest (AUC = %0.2f)' % auc(fpr_rf, tpr_rf),
             lw=2, alpha=.8)
-    #plt.plot(fpr_ab, tpr_ab, label='AdaBoost(area = %0.2f)' % auc(fpr_ab, tpr_ab))
     plt.plot(fpr_ab, tpr_ab, color='m',
             label=r'AdaBoost (AUC = %0.2f)' % auc(fpr_ab, tpr_ab),
             lw=2, alpha=.8)
